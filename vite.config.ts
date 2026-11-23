@@ -24,6 +24,10 @@ const config = defineConfig({
         '/__/auth/**': { proxy: `https://${FIREBASE_PROJECT}.firebaseapp.com/__/auth/**` },
         '/__/firebase/**': { proxy: `https://${FIREBASE_PROJECT}.firebaseapp.com/__/firebase/**` },
       },
+      // Ship the Admin SDK's Firestore client as real node_modules instead of
+      // bundling it: it loads its protobuf files relative to __dirname, which
+      // does not exist once inlined into an ES module bundle.
+      traceDeps: ['firebase-admin', '@google-cloud/firestore', 'google-gax'],
       // Run server functions near the users (UK) rather than the default US region.
       vercel: { functions: { regions: ['lhr1'] } },
     }),
