@@ -7,10 +7,14 @@ import type { z } from "zod";
  * - reasoning: intent parsing, the follow-up question and the revision point.
  *   gpt-4.1-mini: strict structured output, low latency, cheap enough for a demo.
  * - transcribe: speech-to-text for the trainee's turn.
+ * - revision: the end-of-viva revision point. gpt-4.1: it has to judge which gap
+ *   in the answer matters most (labelling candidates reliably); mini mislabelled
+ *   the safety issue. Runs once per viva, so the extra latency and cost are small.
  * - tts: the examiner's voice; steerable tone via `instructions`, streams MP3.
  */
 export const MODELS = {
 	reasoning: "gpt-4.1-mini",
+	revision: "gpt-4.1",
 	transcribe: "gpt-4o-transcribe",
 	tts: "gpt-4o-mini-tts",
 } as const;
@@ -27,6 +31,8 @@ export type StructuredLLM = <S extends z.ZodType>(args: {
 	schema: S;
 	instructions: string;
 	input: string;
+	/** Defaults to MODELS.reasoning. */
+	model?: string;
 }) => Promise<z.infer<S>>;
 
 export const openaiStructured: StructuredLLM = async ({
@@ -34,9 +40,10 @@ export const openaiStructured: StructuredLLM = async ({
 	schema,
 	instructions,
 	input,
+	model = MODELS.reasoning,
 }) => {
 	const res = await openai().responses.parse({
-		model: MODELS.reasoning,
+		model,
 		instructions,
 		input,
 		temperature: 0.2,

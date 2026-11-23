@@ -18,9 +18,10 @@ flowchart LR
     stt --> intent["Classify the utterance<br/>gpt-4.1-mini<br/>(closed list of topics)"]
     intent -- "asks for a finding" --> lookup["Look up the value<br/>in the case file<br/>(deterministic, verbatim)"]
     intent -- "gives an answer" --> follow["Write one follow-up<br/>gpt-4.1-mini"]
-    intent -- "answers the follow-up" --> retrieve["Retrieve passages<br/>BM25 + synonyms"]
-    retrieve --> revise["Write a revision point<br/>gpt-4.1-mini"]
-    revise --> guard{"Excerpt verbatim<br/>in cited passage?"}
+    intent -- "answers the follow-up" --> retrieve["Retrieve passages<br/>BM25 + synonyms<br/>+ reserved safety slots"]
+    retrieve --> revise["Propose candidate points<br/>gpt-4.1"]
+    revise --> pick["Pick by fixed priority<br/>(safety first, in code)"]
+    pick --> guard{"Excerpt verbatim<br/>in cited passage?"}
     guard -- yes --> card["Revision point<br/>with page + excerpt"]
     guard -- no --> nosupport["'No support found'"]
     lookup --> save[("Firestore<br/>attempts/{id}<br/>server-written")]
@@ -39,17 +40,18 @@ The model never produces a finding value: it only chooses which topic and which 
 |---|---|
 | Ask for findings aloud; read back and display with the correct eye, value and unit | The model only chooses *which* finding and *which eye* from a closed list built from the case file. The value is then looked up deterministically and shown verbatim ("Right eye · Intraocular pressure: 58 mmHg"). Speech is generated from the same text with clinical notation expanded ("6/36" → "six thirty-six", "mmHg" → "millimetres of mercury"). |
 | Say when a finding is unavailable | Unavailable findings are read out with the case's reason ("Right eye · Optic disc and fundus: not available (Poor view through oedematous cornea)"). Anything the case doesn't contain ("visual fields") gets "isn't available in this case"; no value is ever invented. |
-| One spoken follow-up that responds to the trainee | When the trainee gives a diagnosis and management, the examiner asks one question that probes something specific in their answer, steered by the case's follow-up ideas. |
+| One spoken follow-up that responds to the trainee | When the trainee gives a diagnosis and management, the examiner asks one question about something specific in their answer. **Patient safety comes first**: if the plan gives acetazolamide to this patient (sulfonamide allergy) or leaves the precipitating antihistamine running, that's what gets asked. Otherwise the question is steered by the case's follow-up ideas. |
 | Clear turn-taking | A status banner shows *Your turn*, *Listening*, *Transcribing*, *Examiner is responding* and *Examiner is speaking*. The mic is tap-to-start / tap-to-stop (or Space), and the examiner can be skipped. Typing is available as a fallback. |
 | Saved attempts, private to the owner | Attempts live in Firestore (`attempts/{id}`). The browser can only **read** its own attempts; every write goes through a server function that verifies the Firebase ID token and ownership (`firestore.rules`, tested against the emulator). After a refresh the transcript and revealed findings reload. |
-| Revision point from the reference note | After the follow-up, relevant passages are retrieved and the model writes one revision point that cites a page and a short excerpt. The excerpt must appear verbatim in the cited passage, otherwise the trainee is told no support was found. |
+| Revision point from the reference note | After the follow-up, relevant passages are retrieved, the model proposes candidate points, and the server picks the **most important gap** by a fixed priority: unsafe drug for this patient → precipitating drug left running → missed key point → incorrect statement → reinforcement. Anything the trainee already covered is dropped. The point cites a page and a short excerpt, which must appear verbatim in the cited passage; otherwise the trainee is told no support was found. |
 
 ## Time and where I stopped
 
-About **2 hours** in total, within the four-hour limit.
+About **2¾ hours** in total, within the four-hour limit: about 2 hours on the brief, then about 45 minutes on polish.
 
 - **Built first:** the deterministic case lookup and speech formatting, reference-note preprocessing and retrieval with the citation guard, the viva engine (findings → follow-up → revision point), Firestore rules, the voice UI, and saved attempts. All of it ran end to end on the Firebase emulators, including a scripted browser run through a fake microphone.
 - **Then:** the real Firebase project with Google sign-in, Vercel deployment, CI, and fixes for three problems that only appeared in production: Google sign-in returning to the sign-in screen, and two bundling issues. Then the built-server smoke test, so those can't come back unnoticed, and this README and `pnpm checks`.
+- **Polish, after that:** consistent formatting checked in CI, the screenshot and diagram above, the end-to-end browser test in CI, and **safety-first feedback**. Every run showed the revision point missing the case's most important error: acetazolamide for a patient with a sulfonamide allergy. The follow-up and revision point now put patient safety first (check 4).
 - **Stopped before:** the follow-up latency improvement below (designed, not built), testing recording on Safari/iOS, and a custom domain.
 
 ## Run it locally
@@ -70,7 +72,7 @@ To run against a real Firebase project, fill in the `VITE_FIREBASE_*` values, `F
 
 | Command | What it does |
 |---|---|
-| `pnpm checks` | The three repeatable checks below, through the real pipeline (needs `OPENAI_API_KEY`) |
+| `pnpm checks` | The repeatable checks below, through the real pipeline (needs `OPENAI_API_KEY`) |
 | `pnpm test` | Unit tests: case lookup, speech normalisation, retrieval regressions, citation guard, signed speech tokens, viva engine with a stubbed model |
 | `pnpm test:rules` | Firestore security-rules tests against the emulator |
 | `pnpm test:e2e` | A whole viva in a real browser (Playwright) against the emulators and the real OpenAI models: a voice question through a fake microphone, an unavailable finding, a request the case doesn't contain, the follow-up, the revision point, a reload, and a second account denied. Run `pnpm emulators` first; CI uses `pnpm test:e2e:ci` |
@@ -78,17 +80,18 @@ To run against a real Firebase project, fill in the `VITE_FIREBASE_*` values, `F
 | `pnpm typecheck` / `pnpm lint` | TypeScript and Biome |
 | `pnpm preprocess:reference` | Rebuilds `data/reference-index.json` from the PDF |
 
-## Three repeatable checks
+## Repeatable checks
 
-`pnpm checks` runs each check through the same code the app uses and prints expected vs observed. Results from the latest run:
+`pnpm checks` runs each check through the same code the app uses and prints expected vs observed. The brief asks for three; the fourth covers the safety-first behaviour. Results from the latest run:
 
 | Check | Input | Expected | Observed | Result |
 |---|---|---|---|---|
 | **1. Available finding** | "What's the pressure in the right eye?" | `Right eye · Intraocular pressure: 58 mmHg`, right eye only; spoken "58 millimetres of mercury" | `Right eye · Intraocular pressure: 58 mmHg`; spoken "Right eye: intraocular pressure, 58 millimetres of mercury." | PASS |
 | **2. Unavailable finding** | "Can I see the right fundus?" | `Right eye · Optic disc and fundus: not available (Poor view through oedematous cornea)`, no value | Same line, result kind `unavailable` | PASS |
-| **3. Citation supports the revision point** | Answer: "Right acute angle closure… laser iridotomy to the right eye." Follow-up: "Why would you consider laser iridotomy on the left eye as well?" Reply: "I don't know." | Supported; cites p.6 *Managing an acute attack › Definitive treatment* (fellow-eye LPI); excerpt verbatim | **Retrieved pages:** 7 (LPI › Indications), 6 (Managing an acute attack › Definitive treatment), 7 (LPI › Technique), 7 (LPI › Complications), 8 (Secondary angle closure › Pushing mechanisms). **Cited:** p.6, *"Prophylactic LPI in the fellow eye, because without treatment around 40 to 50% of fellow eyes have an attack within 5 to 10 years"*; verbatim check passed. | PASS |
+| **3. Citation supports the revision point** | Answer: "Right acute angle closure. Topical timolol, apraclonidine and pilocarpine, analgesia and an antiemetic, stop the chlorphenamine, then laser iridotomy to the right eye." Follow-up: "Why would you consider laser iridotomy on the left eye as well?" Reply: "I don't know." | Supported; cites p.6 *Managing an acute attack › Definitive treatment* (fellow-eye LPI); excerpt verbatim | **Retrieved pages:** 7 (LPI › Indications), 6 (Managing an acute attack › Definitive treatment), 7 (LPI › Technique), 8 (Secondary angle closure › Pushing mechanisms), 7 (LPI › Complications), 5 (Managing an acute attack › Immediate treatment), 4 (Acute primary angle closure › Triggers). **Chosen as** missed key point. **Cited:** p.6, *"Prophylactic LPI in the fellow eye, because without treatment around 40 to 50% of fellow eyes have an attack within 5 to 10 years (higher figures are reported in some series)."*; verbatim check passed. The trainee already said to stop the chlorphenamine, so that was not picked. | PASS |
+| **4. Safety first** | Answer: "Right acute angle closure. Topical timolol and apraclonidine, IV acetazolamide, then laser iridotomy to the right eye." (acetazolamide for a patient with a sulfonamide allergy, never mentioned). Follow-up generated live. Reply: "I'm not sure." | The follow-up asks about the allergy; the revision point is about the sulfonamide allergy, citing an excerpt that mentions it, not the fellow eye | **Follow-up:** "Given her sulfonamide allergy, how would you manage the use of acetazolamide in this patient?" **Chosen as** unsafe drug for this patient. **Cited:** p.6 *Managing an acute attack › Immediate treatment*, *"Check for sulfonamide allergy, kidney disease, low potassium and sickle cell disease before giving it."*; verbatim check passed. | PASS |
 
-Check 3's wording of the revision point varies between runs; the cited page, heading and the verbatim check are what is asserted. The unit tests also cover the negative case: a fabricated excerpt ("the other eye should always be lasered within 24 hours") is rejected and the trainee is told no support was found.
+Checks 3 and 4 run through the same engine the app uses. The wording of the revision point varies between runs; what is asserted is the chosen category, the cited page and heading, and the verbatim check. Each was run three times in a row with the same result. The unit tests cover the rest with a stubbed model: the priority order regardless of the order the model lists candidates, dropping what the trainee already covered, one retry when the chosen excerpt isn't verbatim, and refusing ("no support found") if the retry fails too.
 
 The same flow was also run by hand on production (Google sign-in, real microphone): pressures, right fundus unavailable, answer, follow-up about the left eye, revision point citing p.6, and the attempt still there after a refresh.
 
@@ -97,7 +100,8 @@ The same flow was also run by hand on production (Google sign-in, real microphon
 | Step | Model | Why |
 |---|---|---|
 | Speech to text | `gpt-4o-transcribe` | Accurate on clinical vocabulary; a short prompt biases it towards terms like "gonioscopy", "Van Herick", "acetazolamide". |
-| Intent, follow-up, revision point | `gpt-4.1-mini` | Strict structured output (Zod schemas), low latency, cheap. The model never produces a finding value: it returns topic keys from a closed enum. |
+| Intent, follow-up | `gpt-4.1-mini` | Strict structured output (Zod schemas), low latency, cheap. The model never produces a finding value: it returns topic keys from a closed enum. |
+| Revision point | `gpt-4.1` | It has to label candidate points reliably (is this a safety issue? did the trainee already cover it?). `gpt-4.1-mini` mislabelled the sulfonamide-allergy gap in repeated runs; `gpt-4.1` got it right every time. It runs once per viva, at the end, so the extra ~1–3 s and ~1¢ are acceptable. |
 | Examiner voice | `gpt-4o-mini-tts` (voice `sage`) | Steerable tone ("calm consultant examiner"), streams MP3 so playback starts on the first bytes. |
 
 **Alternative considered: the OpenAI Realtime API** (speech-to-speech). It would cut latency, since there is no separate transcription and synthesis step. But the model would speak the findings itself, which makes it much harder to guarantee that the eye, value and unit are exactly the case file's. The chained pipeline keeps a deterministic lookup between understanding and speaking; that guarantee is the core requirement, so it won.
@@ -127,7 +131,9 @@ The follow-up turn is slowest because it makes two model calls in sequence (clas
 - **Clinical synonym expansion.** Trainees say "the left eye"; the note says "the fellow eye". A short, reviewable table adds the textbook terms ("left/other eye" → "fellow eye prophylactic", "laser" → "laser peripheral iridotomy LPI", "diamox" → "acetazolamide", "doesn't come down" → "does not fall").
 - **Two queries fused by reciprocal rank.** The follow-up exchange (short and specific) and the main answer are searched separately and fused, so the long answer cannot drown out the follow-up.
 
-The top 5 passages go to the model with their ids and pages. It must return the id of one passage and an excerpt copied from it, or say that nothing supports a point. The server then checks that the excerpt appears **verbatim** in that passage (case, whitespace and typographic quotes normalised; `…` allowed only to skip words, in order). If the check fails, or the model cites a passage it wasn't given, the trainee is told no support was found rather than shown an unverified citation.
+**Safety passages get reserved slots.** Two short queries built from the case, *the patient's allergies against the drugs in the answer* and *her current drugs as possible triggers* (drug names only; doses dilute the query), each add their top 2 passages. In a fused ranking, a passage that matches only one query loses to passages matching several, which is how "check for sulfonamide allergy before giving acetazolamide" (p.6) was being missed.
+
+**The model proposes; the code decides.** The passages go to `gpt-4.1` with their ids and pages, together with the case's allergies, current drugs and key points. It returns up to four candidate points. Each has a category, whether the trainee's own words already cover it, the passage id, and an excerpt copied from that passage. The server drops anything already covered and picks by a fixed priority (patient safety first). Ranking is in code because the model was reliable at labelling individual candidates but not at applying a ranking rule across them. The server then checks that the excerpt appears **verbatim** in that passage (case, whitespace and typographic quotes normalised; `…` allowed only to skip words, in order). If the check fails, or the model cites a passage it wasn't given, the trainee is told no support was found rather than shown an unverified citation.
 
 ## Architecture
 

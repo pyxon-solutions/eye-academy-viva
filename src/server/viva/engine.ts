@@ -10,7 +10,7 @@ import {
 } from "#/domain/case";
 import type { Retriever } from "#/domain/reference";
 import type { StructuredLLM } from "../llm";
-import { generateFollowUp } from "./followup";
+import { generateFollowUp, safetyFacts } from "./followup";
 import { parseIntent } from "./intent";
 import { generateRevisionPoint } from "./revision";
 
@@ -22,8 +22,20 @@ export type Deps = {
 	now?: () => number;
 };
 
-const PROMPT_AGAIN =
-	"Ask me for any findings you need, or tell me your diagnosis and management when you're ready.";
+/**
+ * When the trainee says something that is neither a finding request nor an
+ * answer, the examiner nudges a little more specifically each time instead of
+ * repeating one line. Deterministic: no model call.
+ */
+export const PROMPTS = [
+	"Ask me for any findings you need, or tell me your diagnosis and management when you're ready.",
+	"Let's stay with the patient. You could ask for the visual acuity, the pressures or the anterior chamber, for example.",
+	"When you're ready, tell me what you think is going on and how you'd manage it.",
+];
+const promptFor = (attempt: Attempt) => {
+	const asked = attempt.transcript.filter((t) => t.tag === "prompt").length;
+	return PROMPTS[Math.min(asked, PROMPTS.length - 1)];
+};
 const CLOSING =
 	"Thank you, that's the end of the viva. I've put one revision point from the reference note on your screen.";
 const CLOSING_UNSUPPORTED =
@@ -114,11 +126,12 @@ export async function takeTurn(
 				at: now(),
 			};
 		} else {
+			const prompt = promptFor(attempt);
 			reply = {
 				role: "examiner",
 				tag: "prompt",
-				text: PROMPT_AGAIN,
-				speech: PROMPT_AGAIN,
+				text: prompt,
+				speech: prompt,
 				at: now(),
 			};
 		}
@@ -132,6 +145,15 @@ export async function takeTurn(
 			answer: attempt.answer,
 			followUpQuestion: followUp.question,
 			followUpAnswer: utterance,
+			context: {
+				safetyFacts: safetyFacts(deps.vivaCase),
+				allergies: deps.vivaCase.patient.allergies,
+				// "Chlorphenamine 4 mg (over the counter)…" → "Chlorphenamine": doses dilute the query.
+				medications: deps.vivaCase.patient.medications
+					.map((m) => m.split(/\s+\d/)[0].trim())
+					.join(", "),
+				keyPoints: deps.vivaCase.examiner_notes.key_points,
+			},
 		});
 		const retrievedPages = rev.retrieved.map((r) => r.page);
 		next.revision = rev.supported
@@ -143,6 +165,7 @@ export async function takeTurn(
 					excerpt: rev.excerpt,
 					retrievedPages,
 					chunkId: rev.chunkId,
+					category: rev.category,
 					retrieved: rev.retrieved,
 				}
 			: {
