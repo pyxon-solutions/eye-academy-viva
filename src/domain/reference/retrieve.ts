@@ -37,7 +37,10 @@ const EXPANSIONS: [RegExp, string][] = [
 	[/\bdiamox\b/i, "acetazolamide"],
 	[/\bpilo\b/i, "pilocarpine"],
 	[/\b(sulpha|sulfa|sulfonamide|sulphonamide)\b/i, "sulfonamide allergy"],
-	[/\bdoesn'?t (come|go) down|not (falling|coming down)|refractory\b/i, "does not fall"],
+	[
+		/\bdoesn'?t (come|go) down|not (falling|coming down)|refractory\b/i,
+		"does not fall",
+	],
 ];
 
 export function expandQuery(q: string): string {
@@ -99,9 +102,12 @@ export function createRetriever(index: ReferenceIndex) {
 		searchMany(queries: string[], k = 5): Retrieved[] {
 			const fused = new Map<string, number>();
 			for (const q of queries.filter((q) => q.trim())) {
-				mini.search(expandQuery(q)).slice(0, 20).forEach((r, rank) => {
-					fused.set(r.id, (fused.get(r.id) ?? 0) + 1 / (60 + rank + 1));
-				});
+				mini
+					.search(expandQuery(q))
+					.slice(0, 20)
+					.forEach((r, rank) => {
+						fused.set(r.id, (fused.get(r.id) ?? 0) + 1 / (60 + rank + 1));
+					});
 			}
 			return [...fused.entries()]
 				.sort((a, b) => b[1] - a[1])

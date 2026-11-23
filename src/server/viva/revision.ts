@@ -21,14 +21,24 @@ export type RevisionResult =
 			heading: string;
 			chunkId: string;
 			excerpt: string;
-			retrieved: { chunkId: string; page: number; heading: string; score: number }[];
+			retrieved: {
+				chunkId: string;
+				page: number;
+				heading: string;
+				score: number;
+			}[];
 	  }
 	| {
 			supported: false;
 			message: string;
 			/** Why it was rejected: the model found nothing, or its citation failed verification. */
 			reason: "no_support" | "citation_not_verbatim" | "chunk_not_retrieved";
-			retrieved: { chunkId: string; page: number; heading: string; score: number }[];
+			retrieved: {
+				chunkId: string;
+				page: number;
+				heading: string;
+				score: number;
+			}[];
 	  };
 
 const RevisionSchema = z.object({
@@ -65,7 +75,12 @@ export async function generateRevisionPoint(
 		score: Math.round(h.score * 100) / 100,
 	}));
 	if (hits.length === 0)
-		return { supported: false, reason: "no_support", message: NO_SUPPORT, retrieved };
+		return {
+			supported: false,
+			reason: "no_support",
+			message: NO_SUPPORT,
+			retrieved,
+		};
 
 	const passages = hits
 		.map(
@@ -94,15 +109,30 @@ ${passages}`,
 	});
 
 	if (!out.supported || !out.chunk_id)
-		return { supported: false, reason: "no_support", message: NO_SUPPORT, retrieved };
+		return {
+			supported: false,
+			reason: "no_support",
+			message: NO_SUPPORT,
+			retrieved,
+		};
 
 	const hit = hits.find((h) => h.chunk.id === out.chunk_id);
 	if (!hit)
-		return { supported: false, reason: "chunk_not_retrieved", message: NO_SUPPORT, retrieved };
+		return {
+			supported: false,
+			reason: "chunk_not_retrieved",
+			message: NO_SUPPORT,
+			retrieved,
+		};
 
 	// The guard: an excerpt that is not in the cited passage is a fabricated citation.
 	if (!excerptIsVerbatim(out.excerpt, hit.chunk))
-		return { supported: false, reason: "citation_not_verbatim", message: NO_SUPPORT, retrieved };
+		return {
+			supported: false,
+			reason: "citation_not_verbatim",
+			message: NO_SUPPORT,
+			retrieved,
+		};
 
 	return {
 		supported: true,

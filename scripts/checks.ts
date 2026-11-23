@@ -26,14 +26,24 @@ if (!process.env.OPENAI_API_KEY) {
 	process.exit(1);
 }
 
-const vivaCase = CaseSchema.parse(JSON.parse(readFileSync("data/source/case-EA-VIVA-001.json", "utf8")));
+const vivaCase = CaseSchema.parse(
+	JSON.parse(readFileSync("data/source/case-EA-VIVA-001.json", "utf8")),
+);
 const catalogue = buildCatalogue(vivaCase);
 const retriever = createRetriever(
-	ReferenceIndexSchema.parse(JSON.parse(readFileSync("data/reference-index.json", "utf8"))),
+	ReferenceIndexSchema.parse(
+		JSON.parse(readFileSync("data/reference-index.json", "utf8")),
+	),
 );
 const deps = { llm: openaiStructured, vivaCase, catalogue, retriever };
 
-type Result = { name: string; input: string; expected: string; observed: string; pass: boolean };
+type Result = {
+	name: string;
+	input: string;
+	expected: string;
+	observed: string;
+	pass: boolean;
+};
 const results: Result[] = [];
 
 // 1. Available finding ---------------------------------------------------------
@@ -46,7 +56,9 @@ const results: Result[] = [];
 		input,
 		expected: `${expected} (right eye only; spoken "58 millimetres of mercury")`,
 		observed: `${reply.text} | spoken: "${reply.speech}"`,
-		pass: reply.text === expected && (reply.speech ?? "").includes("58 millimetres of mercury"),
+		pass:
+			reply.text === expected &&
+			(reply.speech ?? "").includes("58 millimetres of mercury"),
 	});
 }
 
@@ -55,13 +67,20 @@ const results: Result[] = [];
 	const input = "Can I see the right fundus?";
 	const { reply } = await takeTurn(newAttempt("checks", vivaCase), input, deps);
 	const f = vivaCase.findings.find((x) => x.id === "fundus_right");
-	const expected = f ? displayLine({ kind: "unavailable", finding: f, reason: f.unavailable_reason ?? "" }) : "";
+	const expected = f
+		? displayLine({
+				kind: "unavailable",
+				finding: f,
+				reason: f.unavailable_reason ?? "",
+			})
+		: "";
 	results.push({
 		name: "2. Unavailable finding",
 		input,
 		expected: `${expected} (no value invented)`,
 		observed: `${reply.text} | kind: ${reply.findings?.map((x) => x.kind).join(", ")}`,
-		pass: reply.text === expected && reply.findings?.[0]?.kind === "unavailable",
+		pass:
+			reply.text === expected && reply.findings?.[0]?.kind === "unavailable",
 	});
 }
 
@@ -70,11 +89,14 @@ const results: Result[] = [];
 	const input = {
 		answer:
 			"Right acute angle closure. I'd give topical timolol and apraclonidine, IV acetazolamide, then laser iridotomy to the right eye.",
-		followUpQuestion: "Why would you consider laser iridotomy on the left eye as well?",
+		followUpQuestion:
+			"Why would you consider laser iridotomy on the left eye as well?",
 		followUpAnswer: "I don't know.",
 	};
 	const rev = await generateRevisionPoint(openaiStructured, retriever, input);
-	const retrieved = rev.retrieved.map((r) => `p${r.page} ${r.heading}`).join("; ");
+	const retrieved = rev.retrieved
+		.map((r) => `p${r.page} ${r.heading}`)
+		.join("; ");
 	results.push({
 		name: "3. Citation supports the revision point",
 		input: `answer: "${input.answer}" / follow-up: "${input.followUpQuestion}" / reply: "${input.followUpAnswer}"`,
@@ -83,7 +105,10 @@ const results: Result[] = [];
 		observed: rev.supported
 			? `Supported; cites p${rev.page} '${rev.heading}'; excerpt: "${rev.excerpt}"; verbatim check passed | point: ${rev.point} | retrieved: ${retrieved}`
 			: `Not supported (${rev.reason}) | retrieved: ${retrieved}`,
-		pass: rev.supported && rev.page === 6 && rev.heading.endsWith("Definitive treatment"),
+		pass:
+			rev.supported &&
+			rev.page === 6 &&
+			rev.heading.endsWith("Definitive treatment"),
 	});
 }
 

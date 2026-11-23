@@ -8,8 +8,11 @@ function pickMime(): { mime: string; ext: string } {
 		{ mime: "audio/mp4", ext: "mp4" },
 	];
 	return (
-		options.find((o) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(o.mime)) ??
-		options[0]
+		options.find(
+			(o) =>
+				typeof MediaRecorder !== "undefined" &&
+				MediaRecorder.isTypeSupported(o.mime),
+		) ?? options[0]
 	);
 }
 
@@ -27,12 +30,15 @@ export function useRecorder() {
 			const { mime } = pickMime();
 			const rec = new MediaRecorder(stream, { mimeType: mime });
 			chunks.current = [];
-			rec.ondataavailable = (e) => e.data.size > 0 && chunks.current.push(e.data);
+			rec.ondataavailable = (e) =>
+				e.data.size > 0 && chunks.current.push(e.data);
 			rec.start();
 			recorder.current = rec;
 			setRecording(true);
 		} catch {
-			setError("Microphone unavailable. Allow microphone access, or type your answer instead.");
+			setError(
+				"Microphone unavailable. Allow microphone access, or type your answer instead.",
+			);
 		}
 	}, []);
 
@@ -48,7 +54,11 @@ export function useRecorder() {
 					setRecording(false);
 					const { mime, ext } = pickMime();
 					const blob = new Blob(chunks.current, { type: mime.split(";")[0] });
-					resolve(blob.size > 0 ? new File([blob], `turn.${ext}`, { type: blob.type }) : null);
+					resolve(
+						blob.size > 0
+							? new File([blob], `turn.${ext}`, { type: blob.type })
+							: null,
+					);
 				};
 				rec.stop();
 			}),

@@ -91,8 +91,14 @@ describe("speech normalisation", () => {
 		["6/36", "six thirty-six"],
 		["6/9", "six nine"],
 		["168/94 mmHg", "168 over 94 millimetres of mercury"],
-		["Right +3.50 DS, left +3.25 DS", "Right plus 3.50 dioptres sphere, left plus 3.25 dioptres sphere"],
-		["under 1/4 of corneal thickness", "under one quarter of corneal thickness"],
+		[
+			"Right +3.50 DS, left +3.25 DS",
+			"Right plus 3.50 dioptres sphere, left plus 3.25 dioptres sphere",
+		],
+		[
+			"under 1/4 of corneal thickness",
+			"under one quarter of corneal thickness",
+		],
 	])("%s → %s", (input, spoken) => {
 		expect(toSpeech(input)).toBe(spoken);
 	});

@@ -8,19 +8,29 @@
 	"files": {
 		"ignoreUnknown": false,
 		"includes": [
-			"**/src/**/*",
-			"**/.vscode/**/*",
-			"**/index.html",
-			"**/vite.config.ts",
-			"!**/src/routeTree.gen.ts",
-			"!**/src/styles.css"
+			"src/**",
+			"scripts/**",
+			"tests/**",
+			"*.ts",
+			"*.json",
+			".vscode/**",
+			"!src/routeTree.gen.ts",
+			"!src/styles.css",
+			"!data",
+			"!pnpm-lock.yaml"
 		]
 	},
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -33,4 +43,3 @@
 		}
 	}
 }
-

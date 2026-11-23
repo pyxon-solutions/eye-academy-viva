@@ -59,7 +59,12 @@ const ALLOWED = (process.env.ALLOWED_EMAILS ?? "")
 
 export const isAllowed = (email: string | undefined) =>
 	ALLOWED.length === 0 ||
-	(!!email && ALLOWED.some((a) => (a.startsWith("@") ? email.toLowerCase().endsWith(a) : email.toLowerCase() === a)));
+	(!!email &&
+		ALLOWED.some((a) =>
+			a.startsWith("@")
+				? email.toLowerCase().endsWith(a)
+				: email.toLowerCase() === a,
+		));
 
 /** Verifies a Firebase ID token (and the allow-list) and returns the caller's uid. */
 export async function requireUid(idToken: string): Promise<string> {
@@ -70,6 +75,8 @@ export async function requireUid(idToken: string): Promise<string> {
 		throw new AuthError("Not signed in");
 	}
 	if (!isAllowed(decoded.email))
-		throw new AuthError("This demo is limited to invited accounts. Ask the developer to add your email.");
+		throw new AuthError(
+			"This demo is limited to invited accounts. Ask the developer to add your email.",
+		);
 	return decoded.uid;
 }

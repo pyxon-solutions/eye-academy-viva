@@ -1,5 +1,5 @@
-import type { Finding } from "./schema";
 import type { FindingResult } from "./catalogue";
+import type { Finding } from "./schema";
 
 const EYE_LABEL = { right: "Right eye", left: "Left eye", both: "Both eyes" };
 
@@ -28,11 +28,39 @@ export function displayLine(r: FindingResult): string {
 /* ------------------------------------------------------------------ speech */
 
 const ONES = [
-	"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
-	"ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
-	"seventeen", "eighteen", "nineteen",
+	"zero",
+	"one",
+	"two",
+	"three",
+	"four",
+	"five",
+	"six",
+	"seven",
+	"eight",
+	"nine",
+	"ten",
+	"eleven",
+	"twelve",
+	"thirteen",
+	"fourteen",
+	"fifteen",
+	"sixteen",
+	"seventeen",
+	"eighteen",
+	"nineteen",
 ];
-const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+const TENS = [
+	"",
+	"",
+	"twenty",
+	"thirty",
+	"forty",
+	"fifty",
+	"sixty",
+	"seventy",
+	"eighty",
+	"ninety",
+];
 
 function small(n: number): string {
 	if (n < 20) return ONES[n];
@@ -48,13 +76,17 @@ export function toSpeech(text: string): string {
 	return (
 		text
 			// Snellen acuity: 6/36 → "six thirty-six" (never "six divided by thirty-six" or a date)
-			.replace(/\b(3|6)\/(\d{1,2})\b/g, (_, a, b) => `${small(+a)} ${small(+b)}`)
+			.replace(
+				/\b(3|6)\/(\d{1,2})\b/g,
+				(_, a, b) => `${small(+a)} ${small(+b)}`,
+			)
 			// Blood pressure: 168/94 → "168 over 94"
 			.replace(/\b(\d{2,3})\/(\d{2,3})\b/g, "$1 over $2")
 			.replace(/\b1\/4\b/g, "one quarter")
 			.replace(/\bmmHg\b/g, "millimetres of mercury")
-			.replace(/([+-])(\d+(?:\.\d+)?) DS\b/g, (_, s, n) =>
-				`${s === "+" ? "plus" : "minus"} ${n} dioptres sphere`,
+			.replace(
+				/([+-])(\d+(?:\.\d+)?) DS\b/g,
+				(_, s, n) => `${s === "+" ? "plus" : "minus"} ${n} dioptres sphere`,
 			)
 			.replace(/(\d) mm\b/g, "$1 millimetres")
 			.replace(/\bOCT\b/g, "O C T")
@@ -66,7 +98,8 @@ export function speakResult(r: FindingResult): string {
 	if (r.kind === "not_in_case")
 		return `I'm afraid ${r.asked} isn't available in this case.`;
 	const { eye, label } = r.finding;
-	const prefix = eye === "right" || eye === "left" ? `${capitalise(eye)} eye: ` : "";
+	const prefix =
+		eye === "right" || eye === "left" ? `${capitalise(eye)} eye: ` : "";
 	const subject = prefix ? label.toLowerCase() : label;
 	if (r.kind === "unavailable")
 		return toSpeech(`${prefix}${subject} is not available. ${r.reason}.`);

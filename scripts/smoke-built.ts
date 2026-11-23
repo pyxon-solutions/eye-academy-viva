@@ -43,7 +43,13 @@ for (const k of ["FIREBASE_PROJECT_ID", "VITE_FIREBASE_API_KEY"])
 if (!existsSync(join(SERVER_DIR, "index.mjs")))
 	abort("No built server. Run `NITRO_PRESET=node-server pnpm build` first.");
 // Refuse to run against a server we didn't start (e.g. one left over from a crash).
-if (await fetch(BASE).then(() => true, () => false)) abort(`port ${PORT} is already in use`);
+if (
+	await fetch(BASE).then(
+		() => true,
+		() => false,
+	)
+)
+	abort(`port ${PORT} is already in use`);
 
 // The server-function id is a content hash; read it from the build rather than hard-coding it.
 function serverFnId(name: string): string {
@@ -73,13 +79,21 @@ async function callServerFn(id: string, data: unknown) {
 	const raw = await res.text();
 	const isError = raw.includes('"k":["error"]');
 	const message = raw.match(/"message":\{"t":1,"s":"([^"]*)"/)?.[1];
-	const createdId = raw.match(/"k":\["id","speechId"\],"v":\[\{"t":1,"s":"([^"]+)"/)?.[1];
-	return { status: res.status, raw, error: isError ? { message: message ?? raw } : undefined, id: createdId };
+	const createdId = raw.match(
+		/"k":\["id","speechId"\],"v":\[\{"t":1,"s":"([^"]+)"/,
+	)?.[1];
+	return {
+		status: res.status,
+		raw,
+		error: isError ? { message: message ?? raw } : undefined,
+		id: createdId,
+	};
 }
 
 async function waitForServer(server: ChildProcess) {
 	for (let i = 0; i < 60; i++) {
-		if (server.exitCode !== null) fail(`server exited with code ${server.exitCode}`);
+		if (server.exitCode !== null)
+			fail(`server exited with code ${server.exitCode}`);
 		try {
 			await fetch(BASE);
 			return;
@@ -91,23 +105,32 @@ async function waitForServer(server: ChildProcess) {
 }
 
 const { adminAuth, db, PROJECT_ID } = await import("../src/server/firebase.ts");
-if (PROJECT_ID.startsWith("demo-")) abort("FIREBASE_PROJECT_ID points at the emulator demo project");
+if (PROJECT_ID.startsWith("demo-"))
+	abort("FIREBASE_PROJECT_ID points at the emulator demo project");
 
 const uid = `ci-smoke-${Date.now()}`;
 let attemptId: string | undefined;
 let serverLog = "";
-const server = spawn(process.execPath, ["--no-experimental-require-module", "index.mjs"], {
-	cwd: SERVER_DIR,
-	env: {
-		...process.env,
-		PORT: String(PORT),
-		// The server runs from .output/server, so a relative key path must be made absolute.
-		...(process.env.GOOGLE_APPLICATION_CREDENTIALS
-			? { GOOGLE_APPLICATION_CREDENTIALS: resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS) }
-			: {}),
+const server = spawn(
+	process.execPath,
+	["--no-experimental-require-module", "index.mjs"],
+	{
+		cwd: SERVER_DIR,
+		env: {
+			...process.env,
+			PORT: String(PORT),
+			// The server runs from .output/server, so a relative key path must be made absolute.
+			...(process.env.GOOGLE_APPLICATION_CREDENTIALS
+				? {
+						GOOGLE_APPLICATION_CREDENTIALS: resolve(
+							process.env.GOOGLE_APPLICATION_CREDENTIALS,
+						),
+					}
+				: {}),
+		},
+		stdio: ["ignore", "pipe", "pipe"],
 	},
-	stdio: ["ignore", "pipe", "pipe"],
-});
+);
 server.stdout?.on("data", (d) => (serverLog += d));
 server.stderr?.on("data", (d) => (serverLog += d));
 
@@ -127,7 +150,8 @@ try {
 			},
 		)
 	).json()) as { idToken?: string };
-	if (!exchange.idToken) fail("could not exchange the custom token for an ID token");
+	if (!exchange.idToken)
+		fail("could not exchange the custom token for an ID token");
 
 	const ok = await callServerFn(startAttempt, { idToken: exchange.idToken });
 	if (ok.error) fail(`startAttempt with a real token: ${ok.error.message}`);
@@ -136,11 +160,13 @@ try {
 	console.log(`PASS  startAttempt with a real ID token → attempt ${attemptId}`);
 
 	const doc = (await db.collection("attempts").doc(attemptId).get()).data();
-	if (doc?.uid !== uid || doc?.phase !== "findings") fail("attempt not written with the caller as owner");
+	if (doc?.uid !== uid || doc?.phase !== "findings")
+		fail("attempt not written with the caller as owner");
 	console.log("PASS  attempt saved in Firestore with the caller as owner");
 
 	const bad = await callServerFn(startAttempt, { idToken: "not-a-token" });
-	if (bad.error?.message !== "Not signed in") fail(`invalid token was not rejected: ${bad.raw.slice(0, 200)}`);
+	if (bad.error?.message !== "Not signed in")
+		fail(`invalid token was not rejected: ${bad.raw.slice(0, 200)}`);
 	console.log("PASS  invalid token rejected");
 	console.log("Smoke test passed");
 } catch (e) {
