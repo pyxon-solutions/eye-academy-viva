@@ -2,6 +2,7 @@
   "name": "eye-academy-viva",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@8.15.0",
   "imports": {
     "#/*": "./src/*"
   },
@@ -57,5 +58,8 @@
       "esbuild",
       "lightningcss"
     ]
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
