@@ -33,9 +33,15 @@ describe("viva engine", () => {
 			}),
 		);
 		expect(reply.text).toBe("Right eye · Intraocular pressure: 58 mmHg");
-		expect(reply.speech).toBe("Right eye: intraocular pressure, 58 millimetres of mercury.");
+		expect(reply.speech).toBe(
+			"Right eye: intraocular pressure, 58 millimetres of mercury.",
+		);
 		expect(attempt.revealed).toEqual(["iop_right"]);
-		expect(attempt.transcript.map((t) => t.role)).toEqual(["examiner", "trainee", "examiner"]);
+		expect(attempt.transcript.map((t) => t.role)).toEqual([
+			"examiner",
+			"trainee",
+			"examiner",
+		]);
 	});
 
 	it("an unavailable finding says so and gives the case's reason", async () => {
@@ -43,11 +49,19 @@ describe("viva engine", () => {
 			newAttempt("alice", vivaCase, 0),
 			"Can I see the right fundus?",
 			deps({
-				viva_intent: { kind: "findings", requests: [{ topic: "fundus", eye: "right", asked: "fundus" }] },
+				viva_intent: {
+					kind: "findings",
+					requests: [{ topic: "fundus", eye: "right", asked: "fundus" }],
+				},
 			}),
 		);
-		expect(reply.findings?.[0]).toMatchObject({ kind: "unavailable", findingId: "fundus_right" });
-		expect(reply.text).toContain("not available (Poor view through oedematous cornea)");
+		expect(reply.findings?.[0]).toMatchObject({
+			kind: "unavailable",
+			findingId: "fundus_right",
+		});
+		expect(reply.text).toContain(
+			"not available (Poor view through oedematous cornea)",
+		);
 		expect(attempt.revealed).toEqual(["fundus_right"]);
 	});
 
@@ -58,7 +72,10 @@ describe("viva engine", () => {
 			"Acute angle closure. I'd give drops and laser the right eye.",
 			deps({
 				viva_intent: { kind: "answer", requests: [] },
-				viva_follow_up: { responds_to: "laser right eye only", question: "Why treat the left eye as well?" },
+				viva_follow_up: {
+					responds_to: "laser right eye only",
+					question: "Why treat the left eye as well?",
+				},
 			}),
 		));
 		expect(a.phase).toBe("follow_up");
@@ -76,6 +93,9 @@ describe("viva engine", () => {
 			}),
 		);
 		expect(fabricated.attempt.phase).toBe("completed");
-		expect(fabricated.attempt.revision).toMatchObject({ supported: false, reason: "citation_not_verbatim" });
+		expect(fabricated.attempt.revision).toMatchObject({
+			supported: false,
+			reason: "citation_not_verbatim",
+		});
 	});
 });

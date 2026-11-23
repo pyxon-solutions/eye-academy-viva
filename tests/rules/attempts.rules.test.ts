@@ -31,8 +31,14 @@ beforeEach(async () => {
 	await env.clearFirestore();
 	await env.withSecurityRulesDisabled(async (ctx) => {
 		const db = ctx.firestore();
-		await setDoc(doc(db, "attempts/alice-1"), { uid: "alice", caseId: "EA-VIVA-001" });
-		await setDoc(doc(db, "attempts/bob-1"), { uid: "bob", caseId: "EA-VIVA-001" });
+		await setDoc(doc(db, "attempts/alice-1"), {
+			uid: "alice",
+			caseId: "EA-VIVA-001",
+		});
+		await setDoc(doc(db, "attempts/bob-1"), {
+			uid: "bob",
+			caseId: "EA-VIVA-001",
+		});
 	});
 });
 
@@ -48,18 +54,24 @@ describe("attempts are private to their owner", () => {
 	});
 
 	it("signed-out visitors cannot read it", async () => {
-		await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), "attempts/alice-1")));
+		await assertFails(
+			getDoc(doc(env.unauthenticatedContext().firestore(), "attempts/alice-1")),
+		);
 	});
 
 	it("owner can list their own attempts with a uid filter", async () => {
 		const db = as("alice");
-		await assertSucceeds(getDocs(query(collection(db, "attempts"), where("uid", "==", "alice"))));
+		await assertSucceeds(
+			getDocs(query(collection(db, "attempts"), where("uid", "==", "alice"))),
+		);
 	});
 
 	it("listing without the uid filter, or for someone else, is denied", async () => {
 		const db = as("alice");
 		await assertFails(getDocs(collection(db, "attempts")));
-		await assertFails(getDocs(query(collection(db, "attempts"), where("uid", "==", "bob"))));
+		await assertFails(
+			getDocs(query(collection(db, "attempts"), where("uid", "==", "bob"))),
+		);
 	});
 });
 
@@ -67,6 +79,8 @@ describe("clients cannot write attempts directly", () => {
 	it("owner cannot create, edit or forge revealed findings", async () => {
 		const db = as("alice");
 		await assertFails(setDoc(doc(db, "attempts/alice-2"), { uid: "alice" }));
-		await assertFails(updateDoc(doc(db, "attempts/alice-1"), { revealed: ["iop_right"] }));
+		await assertFails(
+			updateDoc(doc(db, "attempts/alice-1"), { revealed: ["iop_right"] }),
+		);
 	});
 });

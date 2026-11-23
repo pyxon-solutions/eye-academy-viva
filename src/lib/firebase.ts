@@ -20,7 +20,11 @@ const config = real
 			projectId: env.VITE_FIREBASE_PROJECT_ID,
 			appId: env.VITE_FIREBASE_APP_ID,
 		}
-	: { apiKey: "demo-key", authDomain: "localhost", projectId: "demo-eye-academy" };
+	: {
+			apiKey: "demo-key",
+			authDomain: "localhost",
+			projectId: "demo-eye-academy",
+		};
 
 /**
  * Deployed: use our own host as the auth domain; `/__/auth/*` is proxied to
@@ -31,7 +35,9 @@ const config = real
 function authDomain(): string {
 	if (typeof window === "undefined") return env.VITE_FIREBASE_AUTH_DOMAIN;
 	const { hostname, host } = window.location;
-	return hostname === "localhost" || hostname === "127.0.0.1" ? env.VITE_FIREBASE_AUTH_DOMAIN : host;
+	return hostname === "localhost" || hostname === "127.0.0.1"
+		? env.VITE_FIREBASE_AUTH_DOMAIN
+		: host;
 }
 
 let cached: { app: FirebaseApp; auth: Auth; db: Firestore } | undefined;
@@ -44,7 +50,9 @@ export function firebase() {
 	const auth = getAuth(app);
 	const db = getFirestore(app);
 	if (!real && !existing) {
-		connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+		connectAuthEmulator(auth, "http://127.0.0.1:9099", {
+			disableWarnings: true,
+		});
 		connectFirestoreEmulator(db, "127.0.0.1", 8080);
 	}
 	cached = { app, auth, db };

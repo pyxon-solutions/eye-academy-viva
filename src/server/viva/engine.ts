@@ -29,7 +29,11 @@ const CLOSING =
 const CLOSING_UNSUPPORTED =
 	"Thank you, that's the end of the viva. I couldn't find support in the reference note for a revision point, and I've said so on your screen.";
 
-export function newAttempt(uid: string, vivaCase: VivaCase, now = Date.now()): Attempt {
+export function newAttempt(
+	uid: string,
+	vivaCase: VivaCase,
+	now = Date.now(),
+): Attempt {
 	return {
 		uid,
 		caseId: vivaCase.case_id,
@@ -78,7 +82,9 @@ export async function takeTurn(
 		const intent = await parseIntent(deps.llm, deps.catalogue, utterance);
 
 		if (intent.kind === "findings" && intent.requests.length > 0) {
-			const results = intent.requests.flatMap((r) => resolveRequest(deps.catalogue, r));
+			const results = intent.requests.flatMap((r) =>
+				resolveRequest(deps.catalogue, r),
+			);
 			for (const r of results)
 				if (r.kind !== "not_in_case" && !next.revealed.includes(r.finding.id))
 					next.revealed.push(r.finding.id);
@@ -94,16 +100,33 @@ export async function takeTurn(
 		} else if (intent.kind === "answer") {
 			const fu = await generateFollowUp(deps.llm, deps.vivaCase, utterance);
 			next.answer = utterance;
-			next.followUp = { question: fu.question, respondsTo: fu.responds_to, answer: null };
+			next.followUp = {
+				question: fu.question,
+				respondsTo: fu.responds_to,
+				answer: null,
+			};
 			next.phase = "follow_up";
-			reply = { role: "examiner", tag: "follow_up", text: fu.question, speech: fu.question, at: now() };
+			reply = {
+				role: "examiner",
+				tag: "follow_up",
+				text: fu.question,
+				speech: fu.question,
+				at: now(),
+			};
 		} else {
-			reply = { role: "examiner", tag: "prompt", text: PROMPT_AGAIN, speech: PROMPT_AGAIN, at: now() };
+			reply = {
+				role: "examiner",
+				tag: "prompt",
+				text: PROMPT_AGAIN,
+				speech: PROMPT_AGAIN,
+				at: now(),
+			};
 		}
 	} else {
 		// phase === "follow_up": whatever they say is their answer to the follow-up.
 		const followUp = attempt.followUp;
-		if (!followUp || !attempt.answer) throw new Error("Follow-up phase without a question");
+		if (!followUp || !attempt.answer)
+			throw new Error("Follow-up phase without a question");
 		next.followUp = { ...followUp, answer: utterance };
 		const rev = await generateRevisionPoint(deps.llm, deps.retriever, {
 			answer: attempt.answer,
@@ -131,7 +154,13 @@ export async function takeTurn(
 				};
 		next.phase = "completed";
 		const closing = rev.supported ? CLOSING : CLOSING_UNSUPPORTED;
-		reply = { role: "examiner", tag: "closing", text: closing, speech: closing, at: now() };
+		reply = {
+			role: "examiner",
+			tag: "closing",
+			text: closing,
+			speech: closing,
+			at: now(),
+		};
 	}
 
 	next.transcript = [...attempt.transcript, trainee, reply];

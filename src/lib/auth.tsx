@@ -8,7 +8,10 @@ export function useUser(): { user: User | null; loading: boolean } {
 		loading: true,
 	});
 	useEffect(
-		() => onAuthStateChanged(firebase().auth, (user) => setState({ user, loading: false })),
+		() =>
+			onAuthStateChanged(firebase().auth, (user) =>
+				setState({ user, loading: false }),
+			),
 		[],
 	);
 	return state;

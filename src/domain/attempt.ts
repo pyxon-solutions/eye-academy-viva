@@ -34,7 +34,12 @@ export type RevisionView =
 			excerpt: string;
 			retrievedPages: number[];
 	  }
-	| { supported: false; message: string; reason: string; retrievedPages: number[] };
+	| {
+			supported: false;
+			message: string;
+			reason: string;
+			retrievedPages: number[];
+	  };
 
 export type Attempt = {
 	uid: string;
@@ -46,6 +51,10 @@ export type Attempt = {
 	/** Finding ids revealed so far (available or explicitly unavailable), in the order first asked. */
 	revealed: string[];
 	answer: string | null;
-	followUp: { question: string; respondsTo: string; answer: string | null } | null;
+	followUp: {
+		question: string;
+		respondsTo: string;
+		answer: string | null;
+	} | null;
 	revision: (RevisionView & { chunkId?: string; retrieved?: unknown }) | null;
 };

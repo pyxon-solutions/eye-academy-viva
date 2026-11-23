@@ -18,7 +18,8 @@ const TTL_MS = 10 * 60 * 1000;
 const SECRET = process.env.SPEECH_SECRET || randomBytes(32).toString("hex");
 
 const b64url = (b: Buffer | string) => Buffer.from(b).toString("base64url");
-const sign = (payload: string) => b64url(createHmac("sha256", SECRET).update(payload).digest());
+const sign = (payload: string) =>
+	b64url(createHmac("sha256", SECRET).update(payload).digest());
 
 export function issueSpeech(text: string): string {
 	const payload = b64url(JSON.stringify({ t: text, e: Date.now() + TTL_MS }));
@@ -30,10 +31,15 @@ export function speechText(token: string): string | null {
 	if (!payload || !mac) return null;
 	const expected = Buffer.from(sign(payload));
 	const given = Buffer.from(mac);
-	if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
+	if (expected.length !== given.length || !timingSafeEqual(expected, given))
+		return null;
 	try {
-		const { t, e } = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-		return typeof t === "string" && typeof e === "number" && e > Date.now() ? t : null;
+		const { t, e } = JSON.parse(
+			Buffer.from(payload, "base64url").toString("utf8"),
+		);
+		return typeof t === "string" && typeof e === "number" && e > Date.now()
+			? t
+			: null;
 	} catch {
 		return null;
 	}

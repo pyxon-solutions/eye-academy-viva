@@ -8,7 +8,9 @@ describe("preprocessed reference index", () => {
 	it("covers all 10 pages and keeps page-scoped chunks", () => {
 		expect(referenceIndex.pageCount).toBe(10);
 		const pages = new Set(referenceIndex.chunks.map((c) => c.page));
-		expect([...pages].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+		expect([...pages].sort((a, b) => a - b)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+		]);
 	});
 
 	it("splits a sub-section that crosses a page into two chunks", () => {
@@ -27,7 +29,9 @@ describe("retrieval targets the acute angle closure section, not distractors", (
 	});
 
 	it("pilocarpine at very high pressure → page 5 immediate treatment", () => {
-		expect(pagesFor("pilocarpine ischaemic iris sphincter very high pressure")[0]).toBe(5);
+		expect(
+			pagesFor("pilocarpine ischaemic iris sphincter very high pressure")[0],
+		).toBe(5);
 	});
 
 	it("acetazolamide with sulfonamide allergy → page 6 is retrieved", () => {
@@ -40,9 +44,21 @@ describe("follow-up exchanges retrieve the passage that answers them (top 5, fus
 		retriever.searchMany([followUp, answer], 5).map((r) => r.chunk.id);
 
 	it.each([
-		["Why treat the left eye as well? Because it is also narrow.", "Angle closure, drops and laser the right eye.", "p6-20"],
-		["Why might pilocarpine not work at first when the pressure is very high? The iris is ischaemic.", "Acetazolamide and pilocarpine.", "p5-17"],
-		["What would you do if the pressure doesn't come down? Mannitol.", "Angle closure, topical drops, diamox.", "p6-19"],
+		[
+			"Why treat the left eye as well? Because it is also narrow.",
+			"Angle closure, drops and laser the right eye.",
+			"p6-20",
+		],
+		[
+			"Why might pilocarpine not work at first when the pressure is very high? The iris is ischaemic.",
+			"Acetazolamide and pilocarpine.",
+			"p5-17",
+		],
+		[
+			"What would you do if the pressure doesn't come down? Mannitol.",
+			"Angle closure, topical drops, diamox.",
+			"p6-19",
+		],
 	])("%s → %s", (followUp, answer, expected) => {
 		expect(ids(followUp, answer)).toContain(expected);
 	});
@@ -65,12 +81,22 @@ describe("citation guard", () => {
 
 	it("accepts an excerpt elided with an ellipsis, in order", () => {
 		expect(
-			excerptIsVerbatim("Prophylactic LPI in the fellow eye … Long-term pilocarpine is not an adequate alternative", chunk),
+			excerptIsVerbatim(
+				"Prophylactic LPI in the fellow eye … Long-term pilocarpine is not an adequate alternative",
+				chunk,
+			),
 		).toBe(true);
 	});
 
 	it("rejects a paraphrase or an altered number", () => {
-		expect(excerptIsVerbatim("around 30 to 50% of fellow eyes have an attack", chunk)).toBe(false);
-		expect(excerptIsVerbatim("the other eye should also be lasered", chunk)).toBe(false);
+		expect(
+			excerptIsVerbatim(
+				"around 30 to 50% of fellow eyes have an attack",
+				chunk,
+			),
+		).toBe(false);
+		expect(
+			excerptIsVerbatim("the other eye should also be lasered", chunk),
+		).toBe(false);
 	});
 });

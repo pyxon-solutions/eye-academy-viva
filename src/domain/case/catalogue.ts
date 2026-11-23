@@ -31,9 +31,17 @@ export function historyFindings(c: VivaCase): Finding[] {
 		available: true,
 	});
 	return [
-		item("presenting_complaint", "Presenting complaint", p.presenting_complaint),
+		item(
+			"presenting_complaint",
+			"Presenting complaint",
+			p.presenting_complaint,
+		),
 		item("past_ocular_history", "Past ocular history", p.past_ocular_history),
-		item("past_medical_history", "Past medical history", p.past_medical_history),
+		item(
+			"past_medical_history",
+			"Past medical history",
+			p.past_medical_history,
+		),
 		item("medications", "Medications", p.medications.join("; ")),
 		item("allergies", "Allergies", p.allergies),
 		item("family_history", "Family history", p.family_history),

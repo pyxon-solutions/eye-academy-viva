@@ -25,10 +25,17 @@ export const startAttempt = createServerFn({ method: "POST" })
 		const uid = await requireUid(data.idToken);
 		const existing = await attempts().where("uid", "==", uid).count().get();
 		if (existing.data().count >= MAX_ATTEMPTS_PER_USER)
-			throw new Error(`You've reached the limit of ${MAX_ATTEMPTS_PER_USER} attempts for this demo. Reopen an earlier one below.`);
+			throw new Error(
+				`You've reached the limit of ${MAX_ATTEMPTS_PER_USER} attempts for this demo. Reopen an earlier one below.`,
+			);
 		const attempt = newAttempt(uid, vivaCase);
 		const ref = await attempts().add(attempt);
-		return { id: ref.id, speechId: issueSpeech(attempt.transcript[0].speech ?? attempt.transcript[0].text) };
+		return {
+			id: ref.id,
+			speechId: issueSpeech(
+				attempt.transcript[0].speech ?? attempt.transcript[0].text,
+			),
+		};
 	});
 
 export const transcribeTurn = createServerFn({ method: "POST" })
@@ -63,9 +70,12 @@ export const submitTurn = createServerFn({ method: "POST" })
 		const current = snap.data() as Attempt | undefined;
 		// Same error for "missing" and "not yours": don't leak which attempt ids exist.
 		if (!current || current.uid !== uid) throw new Error("Attempt not found");
-		if (current.phase === "completed") throw new Error("This viva has finished");
+		if (current.phase === "completed")
+			throw new Error("This viva has finished");
 		if (current.transcript.length >= MAX_TURNS_PER_ATTEMPT * 2)
-			throw new Error("This viva has reached its turn limit. Start a new attempt from the home page.");
+			throw new Error(
+				"This viva has reached its turn limit. Start a new attempt from the home page.",
+			);
 
 		const t0 = performance.now();
 		const { attempt, reply } = await takeTurn(current, data.text, {
@@ -91,12 +101,21 @@ export const submitTurn = createServerFn({ method: "POST" })
 
 /** Re-speak an examiner line from a saved attempt (e.g. after reopening it). */
 export const speakLine = createServerFn({ method: "POST" })
-	.validator(z.object({ idToken: z.string(), attemptId: z.string(), index: z.number().int().min(0) }))
+	.validator(
+		z.object({
+			idToken: z.string(),
+			attemptId: z.string(),
+			index: z.number().int().min(0),
+		}),
+	)
 	.handler(async ({ data }) => {
 		const uid = await requireUid(data.idToken);
-		const current = (await attempts().doc(data.attemptId).get()).data() as Attempt | undefined;
+		const current = (await attempts().doc(data.attemptId).get()).data() as
+			| Attempt
+			| undefined;
 		if (!current || current.uid !== uid) throw new Error("Attempt not found");
 		const turn = current.transcript[data.index];
-		if (!turn || turn.role !== "examiner") throw new Error("No examiner line at that index");
+		if (!turn || turn.role !== "examiner")
+			throw new Error("No examiner line at that index");
 		return { speechId: issueSpeech(turn.speech ?? turn.text) };
 	});

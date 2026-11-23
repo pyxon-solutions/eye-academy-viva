@@ -30,8 +30,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
-      - name: Lint
-        run: pnpm lint
+      - name: Lint and format (Biome)
+        run: pnpm check
       - name: Unit tests (case lookup, retrieval, citation guard, viva engine)
         run: pnpm test
 
