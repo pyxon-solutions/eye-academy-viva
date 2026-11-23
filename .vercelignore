@@ -1,0 +1,11 @@
+# Never upload secrets; production reads them from Vercel env vars.
+.env
+.env.*
+!.env.example
+service-account*.json
+*firebase-adminsdk*.json
+node_modules
+dist
+.output
+.tanstack
+*-debug.log

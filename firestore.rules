@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Attempts are private to their owner.
+//
+// The browser may only *read* its own attempts. Every write goes through the
+// server (Admin SDK, which bypasses these rules) after the ID token has been
+// verified, so a trainee cannot forge revealed findings, transcript turns or a
+// revision point by writing to Firestore directly.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /attempts/{attemptId} {
+      allow get, list: if request.auth != null
+                       && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
