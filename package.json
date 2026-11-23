@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "checks": "tsx scripts/checks.ts",
     "preprocess:reference": "tsx scripts/preprocess-reference.ts",
     "emulators": "firebase emulators:start --only auth,firestore --project demo-eye-academy",
     "test:rules": "firebase emulators:exec --only firestore --project demo-eye-academy \"vitest run --config vitest.rules.config.ts\""
