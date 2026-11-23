@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "checks": "tsx scripts/checks.ts",
+    "smoke": "tsx scripts/smoke-built.ts",
     "preprocess:reference": "tsx scripts/preprocess-reference.ts",
     "emulators": "firebase emulators:start --only auth,firestore --project demo-eye-academy",
     "test:rules": "firebase emulators:exec --only firestore --project demo-eye-academy \"vitest run --config vitest.rules.config.ts\""
@@ -48,6 +49,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "firebase-tools": "^15.37.0",
+    "seroval": "1.8.2",
     "tsx": "^4.23.15",
     "typescript": "^6.0.2",
     "unpdf": "^2.2.2",

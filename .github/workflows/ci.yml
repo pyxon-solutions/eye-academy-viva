@@ -75,3 +75,31 @@ jobs:
         run: pnpm build
         env:
           NITRO_PRESET: vercel
+
+  smoke:
+    name: Built server smoke test (real Firebase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Secrets are not available to PRs from forks; skip there instead of failing.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the server bundle
+        run: pnpm build
+        env:
+          NITRO_PRESET: node-server
+      - name: Start the bundle with require(ESM) disabled and start a viva with a real ID token
+        run: pnpm smoke
