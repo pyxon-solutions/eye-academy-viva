@@ -27,6 +27,11 @@ function serviceAccount() {
 	return undefined; // fall back to application default credentials
 }
 
+function credentialOption() {
+	const credential = serviceAccount();
+	return credential ? { credential } : {};
+}
+
 const existing = getApps()[0];
 const app =
 	existing ??
@@ -34,7 +39,9 @@ const app =
 		projectId: PROJECT_ID,
 		// Load the service-account key explicitly: tokens are then signed locally
 		// instead of through the IAM Credentials API, which a fresh project lacks.
-		credential: serviceAccount(),
+		// Omit the key entirely when there is no credential (emulators/ADC):
+		// initializeApp rejects an explicit `credential: undefined`.
+		...credentialOption(),
 	});
 export const adminAuth = getAuth(app);
 // Settings can only be applied once per app (dev-server HMR re-evaluates this module).
