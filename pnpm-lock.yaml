@@ -79,6 +79,9 @@ importers:
       firebase-tools:
         specifier: ^15.37.0
         version: 15.37.0(@types/node@22.20.5)
+      seroval:
+        specifier: 1.8.2
+        version: 1.8.2
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -6599,7 +6602,6 @@ packages:
   /seroval@1.8.2:
     resolution: {integrity: sha512-zmMxi/9MdLK1MKazLmIP6Rk39RuK0Xydd+QHeOYntS37olJeTjB3+nwVj4ce/ZWiZJeRhcO5htfxt0mUzQBscQ==}
     engines: {node: '>=20'}
-    dev: false
 
   /serve-static@1.16.3:
     resolution: {integrity: sha512-x0RTqQel6g5SY7Lg6ZreMmsOzncHFU7nhnRWkKgWuMTu5NN0DR5oruckMqRvacAN9d5w6ARnRBXl9xhDCgfMeA==}
