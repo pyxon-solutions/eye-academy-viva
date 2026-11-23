@@ -16,11 +16,23 @@ const real = Boolean(env.VITE_FIREBASE_API_KEY && env.VITE_FIREBASE_PROJECT_ID);
 const config = real
 	? {
 			apiKey: env.VITE_FIREBASE_API_KEY,
-			authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+			authDomain: authDomain(),
 			projectId: env.VITE_FIREBASE_PROJECT_ID,
 			appId: env.VITE_FIREBASE_APP_ID,
 		}
 	: { apiKey: "demo-key", authDomain: "localhost", projectId: "demo-eye-academy" };
+
+/**
+ * Deployed: use our own host as the auth domain; `/__/auth/*` is proxied to
+ * firebaseapp.com (see vite.config.ts), so the Google sign-in handler is
+ * same-site and survives third-party storage partitioning.
+ * Local dev: the default firebaseapp.com domain (popup sign-in works there).
+ */
+function authDomain(): string {
+	if (typeof window === "undefined") return env.VITE_FIREBASE_AUTH_DOMAIN;
+	const { hostname, host } = window.location;
+	return hostname === "localhost" || hostname === "127.0.0.1" ? env.VITE_FIREBASE_AUTH_DOMAIN : host;
+}
 
 let cached: { app: FirebaseApp; auth: Auth; db: Firestore } | undefined;
 
