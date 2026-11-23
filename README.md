@@ -6,6 +6,33 @@ A short, spoken ophthalmology viva. A signed-in trainee asks the examiner for fi
 
 Stack: TanStack Start (React, server functions) · Firebase Auth (Google) and Firestore · OpenAI (speech-to-text, reasoning, text-to-speech) · Vercel.
 
+<img src="docs/images/viva.png" alt="A completed viva: the right-eye pressure read back verbatim, the right fundus unavailable with the case's reason, visual fields not in the case, a follow-up about the left eye, and a revision point citing page 6 of the reference note" width="800">
+
+*A completed viva, run locally against the Firebase emulators. Timings vary between runs; in this one turns took 2.8–8.1 s.*
+
+## How a turn works
+
+```mermaid
+flowchart LR
+    mic([Trainee speaks]) --> stt["Speech to text<br/>gpt-4o-transcribe"]
+    stt --> intent["Classify the utterance<br/>gpt-4.1-mini<br/>(closed list of topics)"]
+    intent -- "asks for a finding" --> lookup["Look up the value<br/>in the case file<br/>(deterministic, verbatim)"]
+    intent -- "gives an answer" --> follow["Write one follow-up<br/>gpt-4.1-mini"]
+    intent -- "answers the follow-up" --> retrieve["Retrieve passages<br/>BM25 + synonyms"]
+    retrieve --> revise["Write a revision point<br/>gpt-4.1-mini"]
+    revise --> guard{"Excerpt verbatim<br/>in cited passage?"}
+    guard -- yes --> card["Revision point<br/>with page + excerpt"]
+    guard -- no --> nosupport["'No support found'"]
+    lookup --> save[("Firestore<br/>attempts/{id}<br/>server-written")]
+    follow --> save
+    card --> save
+    nosupport --> save
+    save --> tts["Examiner voice<br/>gpt-4o-mini-tts, streamed"]
+    tts --> ear([Trainee hears])
+```
+
+The model never produces a finding value: it only chooses which topic and which eye were asked for. Everything shown or spoken about the case comes from the case file through a deterministic lookup, and every citation is checked against the passage it cites.
+
 ## What works
 
 | Requirement | How |
