@@ -137,11 +137,14 @@ const results: Result[] = [];
 		answer,
 		deps,
 	);
-	const followUpAnswer = "I'm not sure.";
+	// A plausible but incomplete reply: it must not count as covering the allergy.
+	const followUpAnswer = "I'd check her kidney function.";
 	const { attempt: done } = await takeTurn(asked, followUpAnswer, deps);
 	const rev = done.revision;
 	const safety = /allerg|sulfonamide|sulpha/i;
-	const followUpOnSafety = safety.test(reply.text);
+	// The follow-up must point at the decision without giving the answer away.
+	const followUpOnSafety =
+		/acetazolamide/i.test(reply.text) && !safety.test(reply.text);
 	const pointOnSafety =
 		!!rev?.supported &&
 		safety.test(`${rev.point} ${rev.excerpt}`) &&
@@ -150,13 +153,51 @@ const results: Result[] = [];
 		name: "4. Safety first: sulfonamide allergy before acetazolamide",
 		input: `answer: "${answer}" / follow-up: (generated) / reply: "${followUpAnswer}"`,
 		expected:
-			"Follow-up asks about the allergy / acetazolamide; revision point is about the sulfonamide allergy, citing a passage whose excerpt mentions it (p6 'Immediate treatment')",
+			"Follow-up asks about acetazolamide WITHOUT naming the allergy (no hints); revision point is about the sulfonamide allergy, citing a passage whose excerpt mentions it (p6 'Immediate treatment', or the p9 medicines table)",
 		observed: `follow-up: "${reply.text}" | ${
 			rev?.supported
 				? `chosen as ${"category" in rev ? rev.category : "?"}; cites p${rev.page} '${rev.heading}'; excerpt: "${rev.excerpt}"; point: ${rev.point}`
 				: "not supported"
 		} | retrieved: ${describeRetrieved(rev?.retrieved)}`,
 		pass: followUpOnSafety && pointOnSafety,
+	});
+}
+
+// 5. A complete answer is not over-corrected -----------------------------------
+// Everything in the examiner's key points, including avoiding acetazolamide and
+// stopping the chlorphenamine. There must be no invented safety issue, and there
+// must still be a supported point (reinforcement, or a genuinely missed detail).
+{
+	const answer =
+		"Right acute primary angle closure, with a narrow left angle at risk, probably triggered by the dark cinema and the new chlorphenamine. Stop the chlorphenamine. Lower the pressure with topical timolol and apraclonidine, then pilocarpine once the pressure starts to fall. I would avoid acetazolamide because of her sulfonamide allergy and use IV mannitol if needed. Give analgesia and an antiemetic. Laser peripheral iridotomy to both eyes once the cornea clears, then repeat gonioscopy of the right eye and examine both discs after the attack settles.";
+	const { attempt: asked, reply } = await takeTurn(
+		newAttempt("checks", vivaCase),
+		answer,
+		deps,
+	);
+	const { attempt: done } = await takeTurn(
+		asked,
+		"Because the left angle is also narrow, so it is at risk of an attack too.",
+		deps,
+	);
+	const rev = done.revision;
+	const category = rev && "category" in rev ? rev.category : undefined;
+	const safetyCategories = [
+		"unsafe_drug_for_this_patient",
+		"precipitating_drug_left_running",
+	];
+	results.push({
+		name: "5. A complete answer is not over-corrected",
+		input: `answer covering every key point (stops chlorphenamine, avoids acetazolamide for the allergy, LPI both eyes…) / follow-up: (generated) / reply about the fellow eye`,
+		expected:
+			"Supported point that is NOT a safety correction (reinforcement, or a genuinely missed detail)",
+		observed: `follow-up: "${reply.text}" | ${
+			rev?.supported
+				? `chosen as ${category}; cites p${rev.page} '${rev.heading}'; point: ${rev.point}`
+				: "not supported"
+		}`,
+		pass:
+			!!rev?.supported && !!category && !safetyCategories.includes(category),
 	});
 }
 
