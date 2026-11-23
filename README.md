@@ -109,16 +109,16 @@ The same flow was also run by hand on production (Google sign-in, real microphon
 
 **Measuring a voice turn.** The timer **starts when the trainee stops recording** (tap or Space, `performance.now()` in the browser) and **stops when the examiner's audio starts playing** (the `<audio>` element's `playing` event). That is the silence the trainee actually waits through. Each examiner turn shows the breakdown under it, e.g. `voice turn 3.9s (speech-to-text 0.9s · examiner 1.8s · voice start 1.2s)`.
 
-Measured on production (function in London, client in Turkey over a VPN):
+Measured on production (function in London, client in Turkey over a VPN), in two separate vivas. The second ran after the revision point moved to `gpt-4.1`; its last two turns were typed, so they have no speech-to-text step (spoken, add roughly 1–1.5 s).
 
 | Turn | Total | Speech-to-text | Examiner (server) | Voice start |
 |---|---|---|---|---|
-| Ask for a finding ("What are the pressures?") | 3.9 s | 0.9 s | 1.8 s | 1.2 s |
-| Unavailable finding ("Can I see the right fundus?") | 4.1 s | 1.2 s | 1.6 s | 1.3 s |
-| Diagnosis → follow-up question | 5.5 s | 1.3 s | 3.0 s | 1.2 s |
-| Follow-up answer → revision point | 4.6 s | 0.8 s | 2.5 s | 1.3 s |
+| Ask for a finding ("What are the pressures?") | 3.9 s / 5.1 s | 0.9 s / 1.2 s | 1.8 s / 1.8 s | 1.2 s / 2.1 s |
+| Unavailable finding ("Can I see the right fundus?" / "fundus") | 4.1 s / 4.3 s | 1.2 s / 1.5 s | 1.6 s / 1.6 s | 1.3 s / 1.3 s |
+| Diagnosis → follow-up question | 5.5 s / 4.4 s *(typed)* | 1.3 s / – | 3.0 s / 3.2 s | 1.2 s / 1.1 s |
+| Follow-up answer → revision point | 4.6 s / 4.3 s *(typed)* | 0.8 s / – | 2.5 s (`gpt-4.1-mini`) / 3.2 s (`gpt-4.1`) | 1.3 s / 1.1 s |
 
-The follow-up turn is slowest because it makes two model calls in sequence (classify the utterance, then write the question).
+The follow-up turn is the slowest server step because it makes two model calls in sequence (classify the utterance, then write the question). In these two runs the last turn's server time went from 2.5 s to 3.2 s after moving the revision point to `gpt-4.1`; with one run each, treat that as indicative. Overall a turn takes about 4–5.5 s from the trainee finishing speaking to the examiner's voice.
 
 ## How the reference note was prepared
 
