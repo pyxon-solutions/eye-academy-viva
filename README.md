@@ -73,6 +73,7 @@ To run against a real Firebase project, fill in the `VITE_FIREBASE_*` values, `F
 | `pnpm checks` | The three repeatable checks below, through the real pipeline (needs `OPENAI_API_KEY`) |
 | `pnpm test` | Unit tests: case lookup, speech normalisation, retrieval regressions, citation guard, signed speech tokens, viva engine with a stubbed model |
 | `pnpm test:rules` | Firestore security-rules tests against the emulator |
+| `pnpm test:e2e` | A whole viva in a real browser (Playwright) against the emulators and the real OpenAI models: a voice question through a fake microphone, an unavailable finding, a request the case doesn't contain, the follow-up, the revision point, a reload, and a second account denied. Run `pnpm emulators` first; CI uses `pnpm test:e2e:ci` |
 | `pnpm smoke` | Starts the **built** server (`NITRO_PRESET=node-server pnpm build` first) with `require()` of ES modules disabled, as on Vercel, and starts a viva with a real ID token against the real Firebase project; cleans up after itself |
 | `pnpm typecheck` / `pnpm lint` | TypeScript and Biome |
 | `pnpm preprocess:reference` | Rebuilds `data/reference-index.json` from the PDF |
@@ -149,7 +150,7 @@ firestore.rules       owner-only reads, no client writes
 
 ## Delivery
 
-- Pull requests run CI (GitHub Actions): typecheck, lint, unit tests, Firestore rules tests on the emulator, a production build, and a smoke test of the built server against the real Firebase project. The smoke test exists because two early production failures only appeared once the app was bundled and a real Google ID token was verified; it reproduces both.
+- Pull requests run CI (GitHub Actions): typecheck, lint, unit tests, Firestore rules tests on the emulator, a production build, a smoke test of the built server against the real Firebase project, and the end-to-end browser test. The smoke test exists because two early production failures only appeared once the app was bundled and a real Google ID token was verified; it reproduces both.
 - Vercel builds a preview for each PR and deploys production when a PR is merged to `main`. Server functions run in `lhr1` (London).
 - Google sign-in on the deployed site uses the app's own domain as the Firebase auth domain (`/__/auth/*` is proxied to firebaseapp.com), so it survives browsers that partition third-party storage.
 

@@ -23,7 +23,9 @@
 		"smoke": "tsx scripts/smoke-built.ts",
 		"preprocess:reference": "tsx scripts/preprocess-reference.ts",
 		"emulators": "firebase emulators:start --only auth,firestore --project demo-eye-academy",
-		"test:rules": "firebase emulators:exec --only firestore --project demo-eye-academy \"vitest run --config vitest.rules.config.ts\""
+		"test:rules": "firebase emulators:exec --only firestore --project demo-eye-academy \"vitest run --config vitest.rules.config.ts\"",
+		"test:e2e": "playwright test",
+		"test:e2e:ci": "firebase emulators:exec --only auth,firestore --project demo-eye-academy \"playwright test\""
 	},
 	"dependencies": {
 		"@tailwindcss/vite": "^4.1.18",
@@ -44,6 +46,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.5",
 		"@firebase/rules-unit-testing": "^6.0.0",
+		"@playwright/test": "1.57.0",
 		"@tanstack/devtools-vite": "0.8.7",
 		"@types/node": "^22.10.2",
 		"@types/react": "^19.2.0",
