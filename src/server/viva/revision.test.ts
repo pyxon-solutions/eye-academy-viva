@@ -113,4 +113,22 @@ describe("revision point priority is decided in code, not by the model", () => {
 			reason: "citation_not_verbatim",
 		});
 	});
+
+	it("a complete answer still gets a point: reinforcement survives the 'already covered' filter", async () => {
+		const reinforce = {
+			...fellowEye,
+			category: "reinforce_correct_point",
+			already_in_trainee_answer: true,
+			point: "You rightly planned LPI for the fellow eye.",
+		};
+		const rev = await generateRevisionPoint(
+			sequence([{ ...trigger, already_in_trainee_answer: true }, reinforce]),
+			retriever,
+			input,
+		);
+		expect(rev).toMatchObject({
+			supported: true,
+			category: "reinforce_correct_point",
+		});
+	});
 });

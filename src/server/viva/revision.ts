@@ -192,7 +192,13 @@ ${passages}`;
 	/** Highest-priority candidate the trainee hasn't already covered. */
 	const best = (cs: Candidate[]) =>
 		cs
-			.filter((c) => !c.already_in_trainee_answer)
+			// "Already covered" rules out corrections, not reinforcement, which by
+			// definition is something the trainee said.
+			.filter(
+				(c) =>
+					c.category === "reinforce_correct_point" ||
+					!c.already_in_trainee_answer,
+			)
 			.sort((a, b) => PRIORITY[a.category] - PRIORITY[b.category])[0];
 
 	let candidates = await ask();
