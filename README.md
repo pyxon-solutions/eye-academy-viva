@@ -17,6 +17,14 @@ Stack: TanStack Start (React, server functions) · Firebase Auth (Google) and Fi
 | Saved attempts, private to the owner | Attempts live in Firestore (`attempts/{id}`). The browser can only **read** its own attempts; every write goes through a server function that verifies the Firebase ID token and ownership (`firestore.rules`, tested against the emulator). After a refresh the transcript and revealed findings reload. |
 | Revision point from the reference note | After the follow-up, relevant passages are retrieved and the model writes one revision point that cites a page and a short excerpt. The excerpt must appear verbatim in the cited passage, otherwise the trainee is told no support was found. |
 
+## Time and where I stopped
+
+About **2 hours** in total, within the four-hour limit.
+
+- **Built first:** the deterministic case lookup and speech formatting, reference-note preprocessing and retrieval with the citation guard, the viva engine (findings → follow-up → revision point), Firestore rules, the voice UI, and saved attempts. All of it ran end to end on the Firebase emulators, including a scripted browser run through a fake microphone.
+- **Then:** the real Firebase project with Google sign-in, Vercel deployment, CI, and fixes for three problems that only appeared in production: Google sign-in returning to the sign-in screen, and two bundling issues. Then the built-server smoke test, so those can't come back unnoticed, and this README and `pnpm checks`.
+- **Stopped before:** the follow-up latency improvement below (designed, not built), testing recording on Safari/iOS, and a custom domain.
+
 ## Run it locally
 
 Requirements: Node 22+, pnpm 8 (`corepack enable`), Java 21 (for the Firebase emulators), an OpenAI API key with access to `gpt-4.1-mini`, `gpt-4o-transcribe` and `gpt-4o-mini-tts`.
