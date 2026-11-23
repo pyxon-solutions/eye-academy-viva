@@ -56,5 +56,12 @@ export type Attempt = {
 		respondsTo: string;
 		answer: string | null;
 	} | null;
-	revision: (RevisionView & { chunkId?: string; retrieved?: unknown }) | null;
+	revision:
+		| (RevisionView & {
+				chunkId?: string;
+				/** Why this point was chosen (server-side priority), e.g. "unsafe_drug_for_this_patient". */
+				category?: string;
+				retrieved?: unknown;
+		  })
+		| null;
 };

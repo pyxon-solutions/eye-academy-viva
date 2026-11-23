@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { catalogue, vivaCase } from "#/domain/case";
 import { retriever } from "#/domain/reference";
 import type { StructuredLLM } from "../llm";
-import { type Deps, newAttempt, takeTurn } from "./engine";
+import { type Deps, newAttempt, PROMPTS, takeTurn } from "./engine";
 
 /** Stub LLM: returns a canned object per structured-output name. */
 const stub =
@@ -85,10 +85,15 @@ describe("viva engine", () => {
 			"Because it is also narrow.",
 			deps({
 				revision_point: {
-					supported: true,
-					chunk_id: "p6-20",
-					excerpt: "the other eye should always be lasered within 24 hours",
-					point: "You should laser both eyes.",
+					candidates: [
+						{
+							category: "missed_key_point",
+							already_in_trainee_answer: false,
+							chunk_id: "p6-20",
+							excerpt: "the other eye should always be lasered within 24 hours",
+							point: "You should laser both eyes.",
+						},
+					],
 				},
 			}),
 		);
@@ -97,5 +102,17 @@ describe("viva engine", () => {
 			supported: false,
 			reason: "citation_not_verbatim",
 		});
+	});
+
+	it("off-topic remarks get a more specific nudge each time, not the same line", async () => {
+		const other = deps({ viva_intent: { kind: "other", requests: [] } });
+		let a = newAttempt("alice", vivaCase, 0);
+		const said: string[] = [];
+		for (const u of ["Hello", "Not sure", "Hmm", "Again"]) {
+			const r = await takeTurn(a, u, other);
+			a = r.attempt;
+			said.push(r.reply.text);
+		}
+		expect(said).toEqual([PROMPTS[0], PROMPTS[1], PROMPTS[2], PROMPTS[2]]);
 	});
 });

@@ -16,7 +16,6 @@ import { createRetriever } from "../src/domain/reference/retrieve.ts";
 import { ReferenceIndexSchema } from "../src/domain/reference/schema.ts";
 import { openaiStructured } from "../src/server/llm.ts";
 import { newAttempt, takeTurn } from "../src/server/viva/engine.ts";
-import { generateRevisionPoint } from "../src/server/viva/revision.ts";
 
 try {
 	process.loadEnvFile(".env");
@@ -36,6 +35,15 @@ const retriever = createRetriever(
 	),
 );
 const deps = { llm: openaiStructured, vivaCase, catalogue, retriever };
+
+const describeRetrieved = (r: unknown) =>
+	Array.isArray(r)
+		? r
+				.map(
+					(x: { page: number; heading: string }) => `p${x.page} ${x.heading}`,
+				)
+				.join("; ")
+		: "";
 
 type Result = {
 	name: string;
@@ -85,30 +93,70 @@ const results: Result[] = [];
 }
 
 // 3. Citation supports the revision point -------------------------------------
+// Through the engine, exactly as the app runs it. The only gap in this answer is
+// the fellow eye, so the point must come from the fellow-eye LPI passage.
 {
-	const input = {
-		answer:
-			"Right acute angle closure. I'd give topical timolol and apraclonidine, IV acetazolamide, then laser iridotomy to the right eye.",
-		followUpQuestion:
-			"Why would you consider laser iridotomy on the left eye as well?",
-		followUpAnswer: "I don't know.",
+	const answer =
+		"Right acute angle closure. Topical timolol, apraclonidine and pilocarpine, analgesia and an antiemetic, stop the chlorphenamine, then laser iridotomy to the right eye.";
+	const followUpQuestion =
+		"Why would you consider laser iridotomy on the left eye as well?";
+	const followUpAnswer = "I don't know.";
+	const attempt = {
+		...newAttempt("checks", vivaCase),
+		phase: "follow_up" as const,
+		answer,
+		followUp: { question: followUpQuestion, respondsTo: "", answer: null },
 	};
-	const rev = await generateRevisionPoint(openaiStructured, retriever, input);
-	const retrieved = rev.retrieved
-		.map((r) => `p${r.page} ${r.heading}`)
-		.join("; ");
+	const { attempt: done } = await takeTurn(attempt, followUpAnswer, deps);
+	const rev = done.revision;
+	const retrieved = describeRetrieved(rev?.retrieved);
 	results.push({
 		name: "3. Citation supports the revision point",
-		input: `answer: "${input.answer}" / follow-up: "${input.followUpQuestion}" / reply: "${input.followUpAnswer}"`,
+		input: `answer: "${answer}" / follow-up: "${followUpQuestion}" / reply: "${followUpAnswer}"`,
 		expected:
 			"Supported; cites p6 'Managing an acute attack › Definitive treatment' (fellow-eye LPI); excerpt appears verbatim in that passage",
-		observed: rev.supported
-			? `Supported; cites p${rev.page} '${rev.heading}'; excerpt: "${rev.excerpt}"; verbatim check passed | point: ${rev.point} | retrieved: ${retrieved}`
-			: `Not supported (${rev.reason}) | retrieved: ${retrieved}`,
+		observed: rev?.supported
+			? `Supported; chosen as ${"category" in rev ? rev.category : "?"}; cites p${rev.page} '${rev.heading}'; excerpt: "${rev.excerpt}"; verbatim check passed | point: ${rev.point} | retrieved: ${retrieved}`
+			: `Not supported (${rev && "reason" in rev ? rev.reason : "none"}) | retrieved: ${retrieved}`,
 		pass:
-			rev.supported &&
+			!!rev?.supported &&
 			rev.page === 6 &&
 			rev.heading.endsWith("Definitive treatment"),
+	});
+}
+
+// 4. Safety first: the most important gap wins --------------------------------
+// The plan gives acetazolamide to a patient with a sulfonamide allergy and never
+// mentions it. Both the follow-up and the revision point should go there, not to
+// the fellow eye.
+{
+	const answer =
+		"Right acute angle closure. Topical timolol and apraclonidine, IV acetazolamide, then laser iridotomy to the right eye.";
+	const { attempt: asked, reply } = await takeTurn(
+		newAttempt("checks", vivaCase),
+		answer,
+		deps,
+	);
+	const followUpAnswer = "I'm not sure.";
+	const { attempt: done } = await takeTurn(asked, followUpAnswer, deps);
+	const rev = done.revision;
+	const safety = /allerg|sulfonamide|sulpha/i;
+	const followUpOnSafety = safety.test(reply.text);
+	const pointOnSafety =
+		!!rev?.supported &&
+		safety.test(`${rev.point} ${rev.excerpt}`) &&
+		/sulfonamide/i.test(rev.excerpt);
+	results.push({
+		name: "4. Safety first: sulfonamide allergy before acetazolamide",
+		input: `answer: "${answer}" / follow-up: (generated) / reply: "${followUpAnswer}"`,
+		expected:
+			"Follow-up asks about the allergy / acetazolamide; revision point is about the sulfonamide allergy, citing a passage whose excerpt mentions it (p6 'Immediate treatment')",
+		observed: `follow-up: "${reply.text}" | ${
+			rev?.supported
+				? `chosen as ${"category" in rev ? rev.category : "?"}; cites p${rev.page} '${rev.heading}'; excerpt: "${rev.excerpt}"; point: ${rev.point}`
+				: "not supported"
+		} | retrieved: ${describeRetrieved(rev?.retrieved)}`,
+		pass: followUpOnSafety && pointOnSafety,
 	});
 }
 
