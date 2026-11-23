@@ -24,10 +24,12 @@ const config = defineConfig({
         '/__/auth/**': { proxy: `https://${FIREBASE_PROJECT}.firebaseapp.com/__/auth/**` },
         '/__/firebase/**': { proxy: `https://${FIREBASE_PROJECT}.firebaseapp.com/__/firebase/**` },
       },
-      // Ship the Admin SDK's Firestore client as real node_modules instead of
-      // bundling it: it loads its protobuf files relative to __dirname, which
-      // does not exist once inlined into an ES module bundle.
-      traceDeps: ['firebase-admin', '@google-cloud/firestore', 'google-gax'],
+      // Ship only the Firestore gRPC client as real node_modules: it loads its
+      // protobuf files relative to __dirname, which does not exist once inlined
+      // into an ES module bundle. Keep everything else (firebase-admin, jwks-rsa,
+      // jose) bundled: Vercel's module loader cannot require() ES modules, so a
+      // traced CommonJS package that requires an ESM-only dependency would fail.
+      traceDeps: ['@google-cloud/firestore', 'google-gax'],
       // Run server functions near the users (UK) rather than the default US region.
       vercel: { functions: { regions: ['lhr1'] } },
     }),
